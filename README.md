@@ -19,6 +19,7 @@ An automated finance tracker that connects **Notion**, **n8n**, and **Google Gem
   Compiles overall spending by category, compares against budgets, and sends an AI-generated summary.
 
 ---
+<img width="2189" height="1224" alt="Screenshot 2025-11-05 002910" src="https://github.com/user-attachments/assets/0ef20a46-ac59-4ad8-8843-1cc48381c326" />
 
 ## ⚙️ Workflow Overview
 
