@@ -1,72 +1,121 @@
 # 💰 Notion + n8n Finance Tracker (AI Budget Assistant)
 
-An automated personal finance tracker built with **Notion** and **n8n**, integrating **AI feedback**, **budget analysis**, and **Telegram alerts**.
+An automated finance tracker that connects **Notion**, **n8n**, and **Google Gemini AI** to manage expenses, analyze budgets, and send reports via **Telegram** — all fully automated. All data for this system is securely stored within Notion, a cloud-based note-taking application that has a highly customizable and structured database.
 
 ---
 
 ## 🧠 Features
 
-- **Daily Expense Summary** → Sends Telegram reminders based on Notion data.  
-- **Weekly Budget Analysis** → Generates AI-powered suggestions using Google Gemini.  
-- **Monthly Report** → Summarizes all spending categories and detects overspending.  
-- **Fully Automated** → Runs on schedule via n8n triggers.
+- 🕗 **Daily Expense Reminder**  
+  Retrieves daily expenses from Notion and sends a daily summary to Telegram.
+
+- 📅 **Weekly Spending Review**  
+  Calculates weekly totals, highlights overbudget categories, and uses Google Gemini AI to suggest improvements and spending behavior.
+
+- 🗓️ **Monthly Summary**  
+  Compiles overall spending by category, compares against budgets, and sends an AI-generated summary.
 
 ---
 
-## 🛠️ How It Works
+## ⚙️ Workflow Overview
 
-1. **Data in Notion**
-   - Expense Record database stores daily transactions.
-   - Category & Budget database tracks monthly limits.
-
-2. **n8n Workflow**
-   - Fetches data from Notion.
-   - Processes it using custom JS/Python.
-   - Calls Gemini AI for analysis.
-   - Sends formatted reports to Telegram.
+| Component | Description                                    |
+|------------|------------------------------------------------|
+| **Platform** | [n8n](https://n8n.io)                          |
+| **Data Source** | [Notion](https://www.notion.so)                |
+| **AI Engine** | [Google Gemini API](https://aistudio.google.com/api-keys)     |
+| **Notifications** | [Telegram Bot](https://core.telegram.org/bots) |
+| **Automation File** | `n8n-workflow/Main Workflow.json`              |
 
 ---
 
-## 📦 Setup
+## 🧩 Notion Setup
 
-### 1. Import Workflow
-1. Download [`Main Workflow.json`](./n8n-workflow/Main%20Workflow.json)
-2. In n8n → “Import Workflow” → choose the file.
+1. Duplicate this Notion template:  
+   👉 [Finance Tracker 2.0 Template](https://forested-macaroon-b41.notion.site/FINANCE-TRACKER-2-0-1-2a1d07d020be815bbe49efcbeace661b?source=copy_link)
 
-### 2. Connect Credentials
-- Notion API
-- Google Gemini (PaLM API key)
-- Telegram Bot token
+2. It includes two databases:
+   - `Expense Record` — for daily transactions.  
+   - `Expenses Type & Budget` — for category and budget limits.
+3. You may change the setting (Budget setting, Expenses Category, Account Details) and try out the feature on your own.
 
-### 3. Duplicate Notion Template
-If you want the same Notion setup:
-- [Duplicate Template Link](https://www.notion.so/your-template-link)
-- Or import the file in `/notion-template/`
+4. After duplication, go to **Settings → My Integrations** in Notion, create a new integration, copy your **secret token**, and share both databases with it (Add Connection → your integration name).
+
+
 
 ---
 
-## 📸 Demo
+## 🔧 How to Import & Connect in n8n
 
-| Type | Screenshot |
-|------|-------------|
-| Daily Summary | *(add screenshot of Telegram daily message)* |
-| Weekly Report | *(add AI summary image)* |
-| Notion View | *(screenshot of Notion database)* |
+1. Open your n8n instance (local or cloud).  
+2. Click **Workflows → Import from File → select `n8n-workflow/Main Workflow.json`**.  
+3. Create the following credentials in n8n:
+
+| Service | Required Fields |
+|:----------|:----------------|
+| Notion | Notion Integration Token |
+| Google Gemini | API Key from Google AI Studio |
+| Telegram | Token from BotFather |
+
+4. Assign each credential to the correct nodes in the workflow editor.  
+5. Manually test one workflow to confirm data retrieval and Telegram message delivery.
+
+---
+# Notion Template
+
+This file provides access to the Notion Finance Tracker used in the n8n Finance Tracker.
+
+## Duplicate the Template
+[👉 Click here to open and duplicate the Finance Tracker 2.0 Notion Template](https://forested-macaroon-b41.notion.site/FINANCE-TRACKER-2-0-1-2a1d07d020be815bbe49efcbeace661b?source=copy_link)
+
+Once duplicated, make sure to:
+1. Share both databases (`Expense Record` and `Expenses Type & Budget`) with your Notion integration.
+2. Copy the integration token and use it in n8n’s Notion credential.
+---
+# Credentials Setup Guide
+To use this workflow, connect these three services in n8n.
 
 ---
 
-## ⚙️ Tech Stack
-- [n8n](https://n8n.io/)
-- [Notion API](https://developers.notion.com/)
-- [Google Gemini API](https://ai.google.dev/)
-- [Telegram Bot API](https://core.telegram.org/bots/api)
+## 1️⃣ Notion
+
+**Credential Name:** `Notion account`
+
+### Steps
+1. Go to [Notion My Integrations](https://www.notion.so/my-integrations)
+2. Click **New Integration**, copy your secret token.
+3. Open your duplicated template:
+   - Expense Record
+   - Expenses Type & Budget
+4. Click **Share → Add connection → your integration**.
+5. In n8n:
+   - Create a new Notion credential named `Notion account`
+   - Paste your secret token.
 
 ---
 
-## 📜 License
-MIT License – Free to use, modify, and share.
+## 2️⃣ Google Gemini
+
+**Credential Name:** `Gemini Finance`
+
+### Steps
+1. Visit [Google AI Studio](https://aistudio.google.com/)
+2. Sign in → Create a project → Generate an **API key**
+3. In n8n → Paste the API key in the AI agent.
+4. Used by the workflow’s AI nodes for weekly/monthly reports.
 
 ---
 
-## 🌟 Author
-Developed by **Ng Jing Han** — Finance & Automation Enthusiast.
+## 3️⃣ Telegram Bot
+
+**Credential Name:** `Telegram account`
+
+### Steps
+1. Chat with [@BotFather](https://t.me/BotFather)
+2. Run `/newbot` → follow steps → copy token (e.g., `123456:ABC-DEF...`)
+3. In n8n:
+   - Create credential named `Telegram account`
+   - Paste token.
+4. Set your **chat ID** in nodes.
+
+---
