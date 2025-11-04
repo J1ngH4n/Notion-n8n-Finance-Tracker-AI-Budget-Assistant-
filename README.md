@@ -1,8 +1,10 @@
-<img width="2189" height="1224" alt="image" src="https://github.com/user-attachments/assets/fa95477f-9fc9-4ba8-8838-a64d13052cfd" /># 💰 Notion + n8n Finance Tracker (AI Budget Assistant)
+# 💰 Notion + n8n Finance Tracker (AI Budget Assistant)
 
 An automated finance tracker that connects **Notion**, **n8n**, and **Google Gemini AI** to manage expenses, analyze budgets, and send reports via **Telegram** — all fully automated. All data for this system is securely stored within Notion, a cloud-based note-taking application that has a highly customizable and structured database.
-<img width="2189" height="1224" alt="image" src="https://github.com/user-attachments/assets/329db9c3-1838-43d7-b852-7b16333e6502" />
 
+![Workflow Overview](https://github.com/user-attachments/assets/fa95477f-9fc9-4ba8-8838-a64d13052cfd)
+
+![System Architecture](https://github.com/user-attachments/assets/329db9c3-1838-43d7-b852-7b16333e6502)
 
 ---
 
@@ -21,13 +23,13 @@ An automated finance tracker that connects **Notion**, **n8n**, and **Google Gem
 
 ## ⚙️ Workflow Overview
 
-| Component | Description                                    |
-|------------|------------------------------------------------|
-| **Platform** | [n8n](https://n8n.io)                          |
-| **Data Source** | [Notion](https://www.notion.so)                |
-| **AI Engine** | [Google Gemini API](https://aistudio.google.com/api-keys)     |
+| Component | Description |
+|-----------|-------------|
+| **Platform** | [n8n](https://n8n.io) |
+| **Data Source** | [Notion](https://www.notion.so) |
+| **AI Engine** | [Google Gemini API](https://aistudio.google.com/api-keys) |
 | **Notifications** | [Telegram Bot](https://core.telegram.org/bots) |
-| **Automation File** | `n8n-workflow/Main Workflow.json`              |
+| **Automation File** | `n8n-workflow/Main Workflow.json` |
 
 ---
 
@@ -37,53 +39,54 @@ An automated finance tracker that connects **Notion**, **n8n**, and **Google Gem
    👉 [Finance Tracker 2.0 Template](https://forested-macaroon-b41.notion.site/FINANCE-TRACKER-2-0-1-2a1d07d020be815bbe49efcbeace661b?source=copy_link)
 
 2. It includes two databases:
-   - `Expense Record` — for daily transactions.  
-   - `Expenses Type & Budget` — for category and budget limits.
-3. You may change the setting (Budget setting, Expenses Category, Account Details) and try out the feature on your own.
+   - `Expense Record` — for daily transactions
+   - `Expenses Type & Budget` — for category and budget limits
+
+3. You may change the settings (Budget setting, Expenses Category, Account Details) and try out the feature on your own.
 
 4. After duplication, go to **Settings → My Integrations** in Notion, create a new integration, copy your **secret token**, and share both databases with it (Add Connection → your integration name).
-
-
 
 ---
 
 ## 🔧 How to Import & Connect in n8n
 
-1. Open your n8n instance (local or cloud).  
-2. Click **Workflows → Import from File → select `n8n-workflow/Main Workflow.json`**.  
+1. Open your n8n instance (local or cloud).
+2. Click **Workflows → Import from File → select `n8n-workflow/Main Workflow.json`**.
 3. Create the following credentials in n8n:
 
 | Service | Required Fields |
-|:----------|:----------------|
-| Notion | Notion Integration Token |
-| Google Gemini | API Key from Google AI Studio |
-| Telegram | Token from BotFather |
+|---------|-----------------|
+| **Notion** | Notion Integration Token |
+| **Google Gemini** | API Key from Google AI Studio |
+| **Telegram** | Token from BotFather |
 
-4. Assign each credential to the correct nodes in the workflow editor.  
+4. Assign each credential to the correct nodes in the workflow editor.
 5. Manually test one workflow to confirm data retrieval and Telegram message delivery.
 
 ---
-# Notion Template
 
-This file provides access to the Notion Finance Tracker used in the n8n Finance Tracker.
+## 📋 Notion Template
 
-## Duplicate the Template
+This section provides access to the Notion Finance Tracker used in the n8n Finance Tracker.
+
+### Duplicate the Template
 [👉 Click here to open and duplicate the Finance Tracker 2.0 Notion Template](https://forested-macaroon-b41.notion.site/FINANCE-TRACKER-2-0-1-2a1d07d020be815bbe49efcbeace661b?source=copy_link)
 
 Once duplicated, make sure to:
 1. Share both databases (`Expense Record` and `Expenses Type & Budget`) with your Notion integration.
-2. Copy the integration token and use it in n8n’s Notion credential.
+2. Copy the integration token and use it in n8n's Notion credential.
+
 ---
-# Credentials Setup Guide
+
+## 🔑 Credentials Setup Guide
+
 To use this workflow, connect these three services in n8n.
 
----
-
-## 1️⃣ Notion
+### 1️⃣ Notion
 
 **Credential Name:** `Notion account`
 
-### Steps
+#### Steps
 1. Go to [Notion My Integrations](https://www.notion.so/my-integrations)
 2. Click **New Integration**, copy your secret token.
 3. Open your duplicated template:
@@ -96,23 +99,23 @@ To use this workflow, connect these three services in n8n.
 
 ---
 
-## 2️⃣ Google Gemini
+### 2️⃣ Google Gemini
 
 **Credential Name:** `Gemini Finance`
 
-### Steps
+#### Steps
 1. Visit [Google AI Studio](https://aistudio.google.com/)
 2. Sign in → Create a project → Generate an **API key**
 3. In n8n → Paste the API key in the AI agent.
-4. Used by the workflow’s AI nodes for weekly/monthly reports.
+4. Used by the workflow's AI nodes for weekly/monthly reports.
 
 ---
 
-## 3️⃣ Telegram Bot
+### 3️⃣ Telegram Bot
 
 **Credential Name:** `Telegram account`
 
-### Steps
+#### Steps
 1. Chat with [@BotFather](https://t.me/BotFather)
 2. Run `/newbot` → follow steps → copy token (e.g., `123456:ABC-DEF...`)
 3. In n8n:
@@ -121,3 +124,4 @@ To use this workflow, connect these three services in n8n.
 4. Set your **chat ID** in nodes.
 
 ---
+
