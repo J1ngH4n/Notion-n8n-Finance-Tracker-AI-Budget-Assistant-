@@ -4,7 +4,6 @@ An automated finance tracker that connects **Notion**, **n8n**, and **Google Gem
 
 ![Workflow Overview](https://github.com/user-attachments/assets/fa95477f-9fc9-4ba8-8838-a64d13052cfd)
 
-![System Architecture](https://github.com/user-attachments/assets/329db9c3-1838-43d7-b852-7b16333e6502)
 
 ---
 
