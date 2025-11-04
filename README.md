@@ -1,6 +1,8 @@
-# 💰 Notion + n8n Finance Tracker (AI Budget Assistant)
+<img width="2189" height="1224" alt="image" src="https://github.com/user-attachments/assets/fa95477f-9fc9-4ba8-8838-a64d13052cfd" /># 💰 Notion + n8n Finance Tracker (AI Budget Assistant)
 
 An automated finance tracker that connects **Notion**, **n8n**, and **Google Gemini AI** to manage expenses, analyze budgets, and send reports via **Telegram** — all fully automated. All data for this system is securely stored within Notion, a cloud-based note-taking application that has a highly customizable and structured database.
+<img width="2189" height="1224" alt="image" src="https://github.com/user-attachments/assets/329db9c3-1838-43d7-b852-7b16333e6502" />
+
 
 ---
 
