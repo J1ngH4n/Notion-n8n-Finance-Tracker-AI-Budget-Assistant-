@@ -1,0 +1,1086 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -520,
+        -20
+      ],
+      "id": "93bad509-cbdd-4128-80a3-446bfabd500c",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\n// Set to the first day of the current month, at midnight UTC for Notion compatibility\nconst firstDayOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));\n\n// Set to the last day of the current month, at the last millisecond of the day UTC\nconst lastDayOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999));\n\n// Notion date properties expect ISO 8601 strings\nreturn [{\n    json: {\n        firstDayOfMonth: firstDayOfMonth.toISOString(),\n        lastDayOfMonth: lastDayOfMonth.toISOString()\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -20
+      ],
+      "id": "6b1ac470-f8c2-48d3-9d61-5e7b98151350",
+      "name": "Code",
+      "notesInFlow": true,
+      "notes": "filter a Notion database for all entries that occurred within the current calendar month."
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "de3f73ba-c146-4158-8eb1-eed586306494",
+          "mode": "list",
+          "cachedResultName": "Expense Record",
+          "cachedResultUrl": "https://www.notion.so/de3f73bac14641588eb1eed586306494"
+        },
+        "returnAll": true,
+        "simple": false,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Date|date",
+              "condition": "on_or_after",
+              "date": "={{ $json.firstDayOfMonth }}"
+            },
+            {
+              "key": "Date|date",
+              "condition": "on_or_before",
+              "date": "={{ $json.lastDayOfMonth }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        -20
+      ],
+      "id": "77e089db-9500-4d7e-90eb-92b5770e3f87",
+      "name": "Get current month expense",
+      "credentials": {
+        "notionApi": {
+          "id": "3vOWpw2hvg1zNlKj",
+          "name": "Notion account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "103974df-233d-4285-b591-e19a2aa9c49a",
+          "mode": "list",
+          "cachedResultName": "Expenses Type & Budget",
+          "cachedResultUrl": "https://www.notion.so/103974df233d4285b591e19a2aa9c49a"
+        },
+        "returnAll": true,
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        140,
+        -20
+      ],
+      "id": "762b6bae-7148-4f54-b2af-0e4a94fc4ddf",
+      "name": "Get All Category Budgets",
+      "credentials": {
+        "notionApi": {
+          "id": "3vOWpw2hvg1zNlKj",
+          "name": "Notion account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Process Notion data from n8n Code node\nalerts = []\nall_categories_summary = []\n\nseen = set()  # Avoid duplicate category+budget+spent combos\nfor item in items:\n    page = item.get('json', {})\n    props = page.get('properties', {})\n\n    # Extract key fields\n    category = props.get('Expense Type', {}).get('title', [{}])[0].get('plain_text', 'UNKNOWN')\n    budget = props.get('Monthly Budget', {}).get('number', 0)\n    spent = props.get('Expense this Month', {}).get('rollup', {}).get('number', 0)\n\n    # Skip duplicates (same name, budget, and spent)\n    key = (category, budget, spent)\n    if key in seen:\n        continue\n    seen.add(key)\n\n    # Avoid divide by zero\n    percentage_used = (spent / budget * 100) if budget else 0\n    status = \"On budget\" if percentage_used <= 100 else \"Overbudget\"\n\n    # Add to alert list if needed\n    if status == \"Overbudget\":\n        alerts.append({\n            \"category\": category,\n            \"budget\": budget,\n            \"spent\": spent,\n            \"utilization\": f\"{percentage_used:.2f}% used, {status}\"\n        })\n\n    # Add to full summary\n    all_categories_summary.append({\n        \"category\": category,\n        \"budget\": budget,\n        \"spent\": spent,\n        \"utilization_percentage\": f\"{percentage_used:.2f}%\",\n        \"status\": status\n    })\n\n# Final output\nreturn [{\n    \"alerts_data\": alerts,\n    \"all_categories_summary_data\": all_categories_summary\n}]\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -20
+      ],
+      "id": "a25a69cf-1db5-4b82-aed9-5ce31f21a5aa",
+      "name": "Code1",
+      "notesInFlow": true,
+      "notes": "iterates over a list of items (each item representing a Notion page,containing budget/category rollups), extracts key financial metrics, performs budget analysis, and prepares the data for subsequent automation steps."
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a helpful financial assistant. Your task is to review the following spending alerts and generate a concise, actionable summary for the user. Focus on categories that are over budget or approaching their budget limit. For each such category, state the category name, how much was spent, its budget, and the percentage utilized. Provide a friendly suggestion for what the user could do for the remainder of the month, given it's the very end of the month ({{ $now.toFormat('MMMM Do', 'en-US') }}).\n\nHere is the data (in JSON format):\n```json\n{{ JSON.stringify($node[\"Code1\"].json[\"alerts_data\"]) }}",
+        "options": {
+          "systemMessage": ""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        580,
+        -20
+      ],
+      "id": "d974182f-36db-4711-a57f-86122f831249",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "id": "a34ed7a0-ff9d-49c4-8d15-9a8b19b6225e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "15SusknFScheJqQE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "my_budget_alerts",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        200
+      ],
+      "id": "a03d90de-ac90-4c9d-9933-e84df7942e1e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ca07296-1203-4393-a6b1-481facc7686f",
+              "leftValue": "={{ $node[\"Code1\"].json[\"alerts_data\"].length }}",
+              "rightValue": "=0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        -20
+      ],
+      "id": "d046fd3c-48c5-4859-b758-e6bd713790ee",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Safely get 'output' from the first item passed into the Function node\nconst output = items[0].json.output;\n\nreturn [\n  {\n    json: {\n      output\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        -120
+      ],
+      "id": "27ba4582-f6c6-437d-acf0-b89b7a6406a4",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "text": "={{ $node[\"Code3\"].json[\"escapedText\"] }}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        -120
+      ],
+      "id": "93b96d4c-4920-4518-83ff-fee0945e19ec",
+      "name": "Send a text message",
+      "webhookId": "a82c28b3-2da4-474c-945e-a9fabbc20f89",
+      "credentials": {
+        "telegramApi": {
+          "id": "eyDCqLztfKjHJVVF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $json.output; // Get the raw output from the AI Agent node\n\n// Telegram MarkdownV2 reserved characters that need to be escaped\nconst escapeChars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];\n\nlet escapedOutput = aiOutput;\nfor (const char of escapeChars) {\n  // Escape each reserved character by preceding it with a backslash\n  // Need to escape the escape character itself for regex if it's a special regex char\n  const regexChar = char.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n  const regex = new RegExp(regexChar, 'g');\n  escapedOutput = escapedOutput.replace(regex, `\\\\${char}`);\n}\n\n// Set the escaped output to a new property, e.g., 'escapedText'\nreturn {\n  json: {\n    escapedText: escapedOutput\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        -120
+      ],
+      "id": "569b597e-7fad-4804-ac8e-4a2a6eed2fc4",
+      "name": "Code3",
+      "notes": "Format Data"
+    },
+    {
+      "parameters": {
+        "text": "=Great news All categories are currently within budget for {{ $now.toFormat('MMMM', 'en-US') }} Keep up the excellent work",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1160,
+        80
+      ],
+      "id": "0738f92c-af17-4327-9cb9-30f09a350ddd",
+      "name": "Send a text message1",
+      "webhookId": "a82c28b3-2da4-474c-945e-a9fabbc20f89",
+      "credentials": {
+        "telegramApi": {
+          "id": "eyDCqLztfKjHJVVF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 21
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -520,
+        340
+      ],
+      "id": "2924b64f-67cc-4788-b9e1-005e7499759c",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json[\"text\"] }}\n",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        340
+      ],
+      "id": "79593f30-f2a7-4310-9fa0-7ebe28aef39f",
+      "name": "Send a text message2",
+      "webhookId": "a1ec8077-e0eb-4998-88a9-d46f0c9f6a17",
+      "credentials": {
+        "telegramApi": {
+          "id": "eyDCqLztfKjHJVVF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                0,
+                3
+              ],
+              "triggerAtHour": 10,
+              "triggerAtMinute": null
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -520,
+        850
+      ],
+      "id": "6835f32f-c458-4c69-8742-acc473cec867",
+      "name": "Schedule Trigger2"
+    },
+    {
+      "parameters": {
+        "text": "={{$json[\"message\"]}}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1160,
+        1000
+      ],
+      "id": "301aa527-28e5-4308-821c-13a561c22791",
+      "name": "Send a text message3",
+      "webhookId": "a1ec8077-e0eb-4998-88a9-d46f0c9f6a17",
+      "credentials": {
+        "telegramApi": {
+          "id": "eyDCqLztfKjHJVVF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Daily Spending Tracking",
+        "height": 80,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        240
+      ],
+      "id": "0200acd2-0943-46c4-80fa-c4fedd2e8e05",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Weeekly Spending Tracking",
+        "height": 80,
+        "width": 580
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -460,
+        620
+      ],
+      "id": "1c2026c1-7fde-4e2b-a291-c46edd0f43f6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "# Monthly Spending Summary",
+        "height": 80,
+        "width": 620
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        -160
+      ],
+      "id": "4e8c160d-74bc-4359-93a9-db86bfd56ecf",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Budget setting",
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        70,
+        850
+      ],
+      "id": "f6d2705d-2560-479c-860c-2b5aff637a53",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json.chatInput}}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        800,
+        600
+      ],
+      "id": "3ee1807c-acbd-44f9-a5b9-26512128aec6",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        820,
+        820
+      ],
+      "id": "340ed819-aaa4-4db5-b528-94a9ed981110",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "15SusknFScheJqQE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0ca07296-1203-4393-a6b1-481facc7686f",
+              "leftValue": "={{$json[\"isOverBudget\"].toString()}}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        360,
+        700
+      ],
+      "id": "29338f7d-7e7c-4b1f-b89a-da9c319b475e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId || $json.userId || Date.now().toString() }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        940,
+        820
+      ],
+      "id": "f4b3c9f7-076d-46f5-9ebf-b7f7c8fa5ef3",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "text": "={{$json.message}}",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1380,
+        700
+      ],
+      "id": "5b84bd34-e205-40a9-b7c1-9bc35b21036b",
+      "name": "Send a text message4",
+      "webhookId": "a1ec8077-e0eb-4998-88a9-d46f0c9f6a17",
+      "credentials": {
+        "telegramApi": {
+          "id": "eyDCqLztfKjHJVVF",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\n// Set to the first day of the current month, at midnight UTC for Notion compatibility\nconst firstDayOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1));\n\n// Set to the last day of the current month, at the last millisecond of the day UTC\nconst lastDayOfMonth = new Date(Date.UTC(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999));\n\n// Notion date properties expect ISO 8601 strings\nreturn [{\n    json: {\n        firstDayOfMonth: firstDayOfMonth.toISOString(),\n        lastDayOfMonth: lastDayOfMonth.toISOString()\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        850
+      ],
+      "id": "dc553e00-d900-4eb0-96e9-02b42bad253d",
+      "name": "Get Current Month Format"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "de3f73ba-c146-4158-8eb1-eed586306494",
+          "mode": "list",
+          "cachedResultName": "Expense Record",
+          "cachedResultUrl": "https://www.notion.so/de3f73bac14641588eb1eed586306494"
+        },
+        "returnAll": true,
+        "simple": false,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Date|date",
+              "condition": "on_or_after",
+              "date": "={{ $json.firstDayOfMonth }}"
+            },
+            {
+              "key": "Date|date",
+              "condition": "on_or_before",
+              "date": "={{ $json.lastDayOfMonth }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        850
+      ],
+      "id": "f66e5cf0-9a54-42be-8dba-b2e9dfac5613",
+      "name": "Get Expense Date",
+      "credentials": {
+        "notionApi": {
+          "id": "3vOWpw2hvg1zNlKj",
+          "name": "Notion account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst categoryMap = {\n  '19fd07d0-20be-80be-b23a-c46bdeeb857d': '🛒 Groceries',\n  '19fd07d0-20be-8028-8770-fa7af7210b95': '🛍️ Shopping',\n  'b6b61519-e1d7-4436-8ec7-9268053a8d0b': '💳 Subscription',\n  '27104116-8549-4204-aacf-c656126d9377': '🏠 House Rental',\n  'd6b949d8-cc67-4556-b438-2b4696713ce0': '🎮 Hangout',\n  '3b4b38e7-dbb7-437d-bf6e-e284f5416fca': '🚗 Commute',\n  '6668a14c-01de-483b-94a8-9f7ddc4d6856': '💡 Utilities',\n  '73c6a4c8-ed49-4854-b9ff-3201b2115936': '🍱 Food'\n};\n\nconst categoryBudgets = {\n  '🍱 Food': 237.10,\n  '🛒 Groceries': 67.74,\n  '🛍️ Shopping': 22.58,\n  '💳 Subscription': 8.35,\n  '🏠 House Rental': 293.55,\n  '🎮 Hangout': 11.29,\n  '🚗 Commute': 20.32,\n  '💡 Utilities': 22.58\n};\n\nconst excludedCategories = ['🏠 House Rental', '💡 Utilities', '💳 Subscription'];\n\nlet latestDate = null;\nlet latestWeekLabel = null;\nconst now = new Date();\n\nfor (const item of items) {\n  const dateStr = item.json.properties?.['Date']?.date?.start;\n  const label = item.json.properties?.['Week Label']?.formula?.string;\n\n  if (dateStr && label) {\n    const date = new Date(dateStr);\n    if (date <= now && (!latestDate || date > latestDate)) {\n      latestDate = date;\n      latestWeekLabel = label;\n    }\n  }\n}\n\nif (!latestWeekLabel) {\n  return [{ json: { error: '❌ No valid (non-future) date/week label found.' } }];\n}\n\n// Sum by category\nconst weeklySpending = {};\n\nfor (const item of items) {\n  const props = item.json.properties;\n  const week = props?.['Week Label']?.formula?.string;\n  if (week !== latestWeekLabel) continue;\n\n  const amount = props?.['Amount']?.number || 0;\n  const categoryRel = props?.['🛍️ Expenses Type']?.relation;\n  if (!categoryRel || categoryRel.length === 0) continue;\n\n  const categoryId = categoryRel[0]?.id;\n  const categoryName = categoryMap[categoryId] || '❓ Unknown';\n\n  if (!weeklySpending[categoryName]) {\n    weeklySpending[categoryName] = 0;\n  }\n  weeklySpending[categoryName] += amount;\n}\n\n// Build message and detect overspend\nlet message = `📊 Weekly Spending Summary (${latestWeekLabel})\\n\\n`;\nlet isOverBudget = false;\nlet overBudgetDetails = [];\n\nfor (const categoryName of Object.keys(categoryBudgets)) {\n  if (excludedCategories.includes(categoryName)) continue;\n\n  const spent = weeklySpending[categoryName] || 0;\n  const budget = categoryBudgets[categoryName];\n  const overAmount = spent - budget;\n  const status = spent > budget ? '⚠️ (Over Budget)' : '✅';\n\n  message += `• ${categoryName}: RM${spent.toFixed(2)} / RM${budget.toFixed(2)} ${status}\\n`;\n\n  if (spent > budget) {\n    isOverBudget = true;\n    overBudgetDetails.push(`${categoryName}: Overspent by RM${overAmount.toFixed(2)}`);\n  }\n}\n\n// Final output\nreturn [\n  {\n    json: {\n      message,\n      week: latestWeekLabel,\n      isOverBudget,\n      overBudgetDetails\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        850
+      ],
+      "id": "9153f1c4-e620-4c81-88c8-dc421cccad92",
+      "name": " Extract Data",
+      "notes": "To change your weekly spending budget, edit this block of code here\nconst categoryBudgets = {\n  '🍱 Food': 237.10,\n  '🛒 Groceries': 67.74,\n  '🛍️ Shopping': 22.58,\n  '💳 Subscription': 8.35,\n  '🏠 House Rental': 293.55,\n  '🎮 Hangout': 11.29,\n  '🚗 Commute': 20.32,\n  '💡 Utilities': 22.58\n};\n\nExample 1000 per month so you enter 200"
+    },
+    {
+      "parameters": {
+        "jsCode": "const week = $json.week;\nconst message = $json.message;\nconst overBudget = $json.overBudgetDetails;\n\nconst chatInput =\n`Here is my weekly spending summary and overbudget analysis:\n\n🗓️ Week: ${week}\n\n📊 Summary:\n${message}\n\n⚠️ Overbudget Categories:\n${overBudget.join(\"\\n\")}\n\nPlease analyze only the categories that went over budget and suggest short, practical ways I can reduce spending next week. Keep the tone friendly and realistic.`;\n\nreturn [{ json: { chatInput } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        700
+      ],
+      "id": "75138dc1-0dbc-48a4-bb54-20e15078406c",
+      "name": "Set Prompt"
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeMarkdownV2(text) {\n  return text.replace(/([_*[\\]()~`>#+=|{}.!\\\\\\-])/g, '\\\\$1');\n}\n\nconst escaped = escapeMarkdownV2($json.message);\n\nreturn [{\n  json: {\n    message: escaped,\n    week: $json.week\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        1000
+      ],
+      "id": "00ed268e-e218-4177-8dc8-fbd9cf585fe4",
+      "name": "Format Markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $json.output || '[❌ AI output missing]';\n\nfunction escapeMarkdownV2PreservingBold(text) {\n  if (!text || typeof text !== 'string') return '';\n  \n  // Step 1: Extract and store bold text with unique placeholders\n  const boldList = [];\n  let processedText = text.replace(/\\*\\*(.*?)\\*\\*/g, (match, content) => {\n    const token = `XBOLDPLACEHOLDERX${boldList.length}XBOLDPLACEHOLDERX`;\n    boldList.push(content);\n    return token;\n  });\n  \n  // Step 2: Extract and store italic text with unique placeholders\n  const italicList = [];\n  processedText = processedText.replace(/\\*(.*?)\\*/g, (match, content) => {\n    const token = `XITALICPLACEHOLDERX${italicList.length}XITALICPLACEHOLDERX`;\n    italicList.push(content);\n    return token;\n  });\n  \n  // Step 3: Escape all MarkdownV2 special characters\n  let escaped = processedText\n    .replace(/\\\\/g, '\\\\\\\\')\n    .replace(/_/g, '\\\\_')\n    .replace(/\\*/g, '\\\\*')\n    .replace(/\\[/g, '\\\\[')\n    .replace(/\\]/g, '\\\\]')\n    .replace(/\\(/g, '\\\\(')\n    .replace(/\\)/g, '\\\\)')\n    .replace(/~/g, '\\\\~')\n    .replace(/`/g, '\\\\`')\n    .replace(/>/g, '\\\\>')\n    .replace(/#/g, '\\\\#')\n    .replace(/\\+/g, '\\\\+')\n    .replace(/-/g, '\\\\-')\n    .replace(/=/g, '\\\\=')\n    .replace(/\\|/g, '\\\\|')\n    .replace(/{/g, '\\\\{')\n    .replace(/}/g, '\\\\}')\n    .replace(/\\./g, '\\\\.')\n    .replace(/!/g, '\\\\!');\n  \n  // Helper function to escape special characters within formatted text\n  function escapeSpecialChars(str) {\n    return str\n      .replace(/\\\\/g, '\\\\\\\\')\n      .replace(/_/g, '\\\\_')\n      .replace(/\\*/g, '\\\\*')\n      .replace(/\\[/g, '\\\\[')\n      .replace(/\\]/g, '\\\\]')\n      .replace(/\\(/g, '\\\\(')\n      .replace(/\\)/g, '\\\\)')\n      .replace(/~/g, '\\\\~')\n      .replace(/`/g, '\\\\`')\n      .replace(/>/g, '\\\\>')\n      .replace(/#/g, '\\\\#')\n      .replace(/\\+/g, '\\\\+')\n      .replace(/-/g, '\\\\-')\n      .replace(/=/g, '\\\\=')\n      .replace(/\\|/g, '\\\\|')\n      .replace(/{/g, '\\\\{')\n      .replace(/}/g, '\\\\}')\n      .replace(/\\./g, '\\\\.')\n      .replace(/!/g, '\\\\!');\n  }\n  \n  // Step 4: Reinsert italic text (use _ for italics in MarkdownV2)\n  italicList.forEach((italicText, i) => {\n    const safeItalic = escapeSpecialChars(italicText);\n    const token = `XITALICPLACEHOLDERX${i}XITALICPLACEHOLDERX`;\n    escaped = escaped.replace(token, `_${safeItalic}_`);\n  });\n  \n  // Step 5: Reinsert bold text (use * for bold in MarkdownV2)\n  boldList.forEach((boldText, i) => {\n    const safeBold = escapeSpecialChars(boldText);\n    const token = `XBOLDPLACEHOLDERX${i}XBOLDPLACEHOLDERX`;\n    escaped = escaped.replace(token, `*${safeBold}*`);\n  });\n  \n  return escaped;\n}\n\n// Process the text\nconst escapedMessage = escapeMarkdownV2PreservingBold(rawText);\n\n// Return final message\nreturn [{\n  json: {\n    message: escapedMessage\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        700
+      ],
+      "id": "8b7527d9-f021-4fca-ae1c-e73d4e6a5575",
+      "name": "Format Markdown1"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "getAll",
+        "databaseId": {
+          "__rl": true,
+          "value": "de3f73ba-c146-4158-8eb1-eed586306494",
+          "mode": "list",
+          "cachedResultName": "Expense Record",
+          "cachedResultUrl": "https://www.notion.so/de3f73bac14641588eb1eed586306494"
+        },
+        "returnAll": true,
+        "simple": false,
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "key": "Date|date",
+              "condition": "on_or_after",
+              "date": "={{ $now.toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        -300,
+        340
+      ],
+      "id": "27e2597d-ef19-4a42-b366-904686b6581b",
+      "name": "Get Day Expense",
+      "alwaysOutputData": true,
+      "credentials": {
+        "notionApi": {
+          "id": "3vOWpw2hvg1zNlKj",
+          "name": "Notion account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeMarkdownV2(text) {\n  return text.replace(/[_*[\\]()~`>#+=|{}.!\\\\-]/g, match => '\\\\' + match);\n}\n\nconst today = new Date();\nconst optionsDate = { year: 'numeric', month: 'long', day: 'numeric' };\nconst formattedDate = today.toLocaleDateString('en-US', optionsDate); // \"July 1, 2025\"\n\nlet totalSpentToday = 0;\nlet detailedExpenses = [];\n\nif (!items || items.length === 0) {\n  return [{\n    json: {\n      daily_summary_message: `*🔔 Reminder: No spending entries found for ${escapeMarkdownV2(formattedDate)}\\\\. Please update your expenses\\\\. 📝*`,\n      isReminder: true\n    }\n  }];\n}\n\nfor (const item of items) {\n  const props = item.json?.properties;\n  if (!props || !props.Amount || !props['Expenses Record']) {\n    continue; // skip invalid entries\n  }\n\n  const amount = props.Amount.number || 0;\n  const expenseName = props['Expenses Record'].title[0]?.plain_text || 'Unnamed Expense';\n  const categoryRelationId = props['🛍️ Expenses Type']?.relation[0]?.id;\n  const shortCategory = categoryRelationId ? `Category ID: ${categoryRelationId.substring(0, 8)}...` : 'Unknown Category';\n\n  if (amount > 0) {\n    totalSpentToday += amount;\n    const line = `• *${escapeMarkdownV2(expenseName)}* \\\\(${escapeMarkdownV2(shortCategory)}\\\\): \\\\$${amount.toFixed(2).replace('.', '\\\\.')}`;\n    detailedExpenses.push(line);\n  }\n}\n\nlet dailySummaryMessage = '';\n\nif (totalSpentToday === 0) {\n  dailySummaryMessage = `🔔 No spending recorded on ${escapeMarkdownV2(formattedDate)}.`;\n  return [{ json: { daily_summary_message: dailySummaryMessage, isReminder: true } }];\n} else {\n  dailySummaryMessage = `*📊 Daily Spending Summary \\\\(${escapeMarkdownV2(formattedDate)}\\\\)*\\n\\n`;\n  dailySummaryMessage += `*Total spent:* \\\\$${totalSpentToday.toFixed(2).replace('.', '\\\\.')}\\n\\n`;\n  dailySummaryMessage += detailedExpenses.join('\\n');\n  return [{ json: { daily_summary_message: dailySummaryMessage, isReminder: false } }];\n}\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        340
+      ],
+      "id": "126fad91-ec4c-48d8-90eb-45f6cb05c566",
+      "name": "Summary Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "function escapeMarkdownV2(text) {\n  return text.replace(/([_*[\\]()~`>#+=|{}.!\\\\\\-])/g, '\\\\$1');\n}\n\n// Category ID → Emoji + Name mapping (exact match with your example)\nconst categoryMap = {\n  '19fd07d0-20be-80be-b23a-c46bdeeb857d': '🛒 Groceries',\n  '19fd07d0-20be-8028-8770-fa7af7210b95': '🛍️ Shopping',\n  'b6b61519-e1d7-4436-8ec7-9268053a8d0b': '💳 Subscription',\n  '27104116-8549-4204-aacf-c656126d9377': '🏠 House Rental',\n  'd6b949d8-cc67-4556-b438-2b4696713ce0': '🎮 Hangout',\n  '3b4b38e7-dbb7-437d-bf6e-e284f5416fca': '🚗 Commute',\n  '6668a14c-01de-483b-94a8-9f7ddc4d6856': '💡 Utilities',\n  '73c6a4c8-ed49-4854-b9ff-3201b2115936': '🍱  Food'\n};\n\n// Step 1: Get raw message\nlet raw = $input.all()[0].json.daily_summary_message;\n\n// Step 2: Unescape manually added backslashes for ID parsing\nraw = raw\n  .replace(/\\\\\\./g, '.')\n  .replace(/\\\\\\(/g, '(')\n  .replace(/\\\\\\)/g, ')');\n\n// Step 3: Replace (Category ID: abcdef12...) with category name + emoji\nraw = raw.replace(/\\(Category ID: ([a-f0-9]{8})\\.\\.\\.\\)/g, (_, shortId) => {\n  const match = Object.entries(categoryMap).find(([id]) => id.startsWith(shortId));\n  const name = match ? match[1] : '❓ Unknown Category';\n  return `(${name})`;\n});\n\n// Step 4: Convert $ to RM (e.g. $1300.00 → RM1,300.00)\nraw = raw.replace(/\\$([\\d,]+\\.\\d{2})/g, (_, amount) => {\n  const formatted = Number(amount).toLocaleString('en-MY', {\n    style: 'currency',\n    currency: 'MYR',\n    minimumFractionDigits: 2\n  });\n  return formatted.replace('MYR', 'RM');\n});\n\n// Step 5: Escape MarkdownV2, preserve formatting\nlet escaped = escapeMarkdownV2(raw);\n\n// Unescape formatting and RM\nescaped = escaped\n  .replace(/\\\\RM/g, 'RM')\n  .replace(/\\\\\\*/g, '*')\n  .replace(/\\\\_/g, '_');\n\nreturn [{ json: { text: escaped } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        340
+      ],
+      "id": "ec7f3b26-1280-47f9-ba97-3c4fa5ba86ed",
+      "name": "Format Message"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n\n// Unescape the message string\nlet cleanedMessage = data.message.replace(/\\\\/g, '');\n\n// Match all RM values\nconst spendingMatches = cleanedMessage.match(/RM(\\d+\\.\\d{2})/g);\n\n// Sum every first RM value in each line (spent amounts)\nlet total = 0;\nif (spendingMatches) {\n  for (let i = 0; i < spendingMatches.length; i += 2) {\n    total += parseFloat(spendingMatches[i].replace(\"RM\", \"\"));\n  }\n}\n\n// Format the total\nconst totalSpending = parseFloat(total.toFixed(2));\ndata.currentSpending = totalSpending;\n\n// Inject \"Total spending this week: RMxx.xx\" after the summary title line\ncleanedMessage = cleanedMessage.replace(\n  /(📊 Weekly Spending Summary.*?\\n\\n)/,\n  `$1💰 Total Spending This Week: RM${totalSpending.toFixed(2)}\\n\\n`\n);\n\n// Escape MarkdownV2 special characters again if sending to Telegram\nconst escapeMarkdownV2 = (text) => {\n  return text.replace(/([_*\\[\\]()~`>#+=|{}.!\\\\\\-])/g, '\\\\$1');\n};\n\ndata.message = escapeMarkdownV2(cleanedMessage);\n\nreturn [{ json: data }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        1000
+      ],
+      "id": "52e0a549-cd01-461c-a18a-b28c8a89e86d",
+      "name": "Code4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json;\n\n// Unescape first (just in case)\nlet message = data.message.replace(/\\\\/g, '');\n\n// Bold the header\nmessage = message.replace(\n  /(📊 Weekly Spending Summary\\s*\\(.*?\\))/,\n  '**$1**'\n);\n\n// Bold the total spending line\nmessage = message.replace(\n  /(💰 Total Spending This Week: RM\\d+\\.\\d{2})/,\n  '**$1**'\n);\n\n// Bold each category name\nmessage = message.replace(\n  /^([•]\\s+[^\\:]+):/gm,\n  '**$1**:'\n);\n\n// Now apply Telegram MarkdownV2 escaping — EXCEPT for `*`\nconst escapeMarkdownV2PreservingBold = (text) => {\n  return text\n    .replace(/([_`[\\]()~>#+=|{}.!\\\\-])/g, '\\\\$1') // escape everything except *\n    .replace(/\\*/g, '\\\\*')                       // escape * to \\* after\n    .replace(/\\\\\\*\\\\\\*(.*?)\\\\\\*\\\\\\*/g, '*$1*');   // re-wrap double-bold correctly\n};\n\ndata.message = escapeMarkdownV2PreservingBold(message);\n\nreturn [{ json: data }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        870,
+        1000
+      ],
+      "id": "29bbaadd-abc4-4bd5-938b-b385606d04b5",
+      "name": "Code5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get current month expense",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get current month expense": {
+      "main": [
+        [
+          {
+            "node": "Get All Category Budgets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Category Budgets": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code3": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Get Day Expense",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger2": {
+      "main": [
+        [
+          {
+            "node": "Get Current Month Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Format Markdown1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Set Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current Month Format": {
+      "main": [
+        [
+          {
+            "node": "Get Expense Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Expense Date": {
+      "main": [
+        [
+          {
+            "node": " Extract Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    " Extract Data": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Markdown": {
+      "main": [
+        [
+          {
+            "node": "Code4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Markdown1": {
+      "main": [
+        [
+          {
+            "node": "Send a text message4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Day Expense": {
+      "main": [
+        [
+          {
+            "node": "Summary Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summary Message": {
+      "main": [
+        [
+          {
+            "node": "Format Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Message": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code4": {
+      "main": [
+        [
+          {
+            "node": "Code5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code5": {
+      "main": [
+        [
+          {
+            "node": "Send a text message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b4c22bb8-5f04-419c-803e-097cc182cfde",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04be18669d90eed25adccf2f637e092e02d218165913b705ca51d7b329e465f3"
+  },
+  "id": "8QxMNw7MUK1O3Pc7",
+  "tags": []
+}
